@@ -1,7 +1,6 @@
 package API;
 import java.io.IOException;
 import java.net.DatagramPacket;
-import java.net.InetAddress;
 import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 
@@ -12,15 +11,15 @@ import Main_System.Version;
 
 
 public class GETCHUNK extends Thread{
-	
-	public void run(Chunk newChunk, InetAddress ipSender, int portSender){
+	private Chunk newChunk = null;
+	public void run(){
 		// VARIAVEIS DE ARMAZENAMENTO
 		String sendBuffer = null;
 		String sha256_string = null;
 		int milisecond_wait;
 		Random random = new Random();
 		
-		// VARIAVEIS CORRESPONDENTES À CONEXÃO
+		// VARIAVEIS CORRESPONDENTES ï¿½ CONEXï¿½O
 		DatagramPacket responsePacket = null;
 		
 		//GETCHUNK <Version> <FileId> <ChunkNo> <CRLF> <CRLF>
@@ -63,7 +62,7 @@ public class GETCHUNK extends Thread{
 					
 					sendBuffer = "CHUNK " + found_chunk.getVersion() + " " + found_chunk.getFileID() + " " + found_chunk.getChunkNumber() +'\r' + '\n' + found_chunk.getContentString();
 					
-					responsePacket = new DatagramPacket(sendBuffer.getBytes(),sendBuffer.getBytes().length,ipSender,portSender);
+					responsePacket = new DatagramPacket(sendBuffer.getBytes(),sendBuffer.getBytes().length,Peer.MDR_IP,Peer.MDR_PORT);
 					
 					//DELAY DE UM NUMERO ALEATORIO DE 0 A 400 MS 
 					milisecond_wait = random.nextInt(401);
@@ -76,7 +75,7 @@ public class GETCHUNK extends Thread{
 					}
 					
 					try {
-						Peer.socket.send(responsePacket);
+						Peer.MDR_socket.send(responsePacket);
 						System.out.println("#SENT: "+sendBuffer +"\n" + "##############################");
 					} catch (IOException e) {
 						//e.printStackTrace();
@@ -90,6 +89,13 @@ public class GETCHUNK extends Thread{
 		
 		
 		
+	}
+	
+	public Chunk getNewChunk() {
+		return newChunk;
+	}
+	public void setNewChunk(Chunk newChunk) {
+		this.newChunk = newChunk;
 	}
 
 }

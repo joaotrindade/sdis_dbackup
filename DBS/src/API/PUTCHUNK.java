@@ -1,7 +1,6 @@
 package API;
 import java.io.IOException;
 import java.net.DatagramPacket;
-import java.net.InetAddress;
 import java.security.NoSuchAlgorithmException;
 import java.util.Hashtable;
 import java.util.Random;
@@ -13,15 +12,15 @@ import Main_System.Version;
 
 
 public class PUTCHUNK extends Thread {
-
-	public void run(Chunk newChunk, InetAddress ipSender, int portSender) {
+	private Chunk newChunk = null;
+	public void run() {
 		// VARIAVEIS DE ARMAZENAMENTO
 		String sendBuffer = null;
 		String sha256_string = null;
 		int milisecond_wait;
 		Random random = new Random();
 		
-		// VARIAVEIS CORRESPONDENTES À CONEXÃO
+		// VARIAVEIS CORRESPONDENTES ï¿½ CONEXï¿½O
 		DatagramPacket responsePacket = null;
 		
 		sha256_string = newChunk.getFileID();
@@ -39,21 +38,21 @@ public class PUTCHUNK extends Thread {
 			FileBackup newFile = new FileBackup();
 			newFile.setFileID(sha256_string);
 
-			// CRIA UMA TABELA DE HASH DE VERSÕES, CRIA UMA VERSÃO
+			// CRIA UMA TABELA DE HASH DE VERSï¿½ES, CRIA UMA VERSï¿½O
 			Hashtable<Float, Version> versions = new Hashtable<Float, Version>();
 			Version newVersion = new Version();
 			newVersion.setVersion(newChunk.getVersion());
 			
-			// CRIA UMA TABELA DE HASH, ADICIONA O CHUNK E COLOCA ESSA TABELA NA VERSÃO.
+			// CRIA UMA TABELA DE HASH, ADICIONA O CHUNK E COLOCA ESSA TABELA NA VERSï¿½O.
 			Hashtable<Long, Chunk> chunks = new Hashtable<Long, Chunk>();
 			chunks.put(newChunk.getChunkNumber(), newChunk);
 			newVersion.setChunks(chunks);
 			
-			// ADICIONA A VERSÃO À TABELA HASH DE VERSOES E ADICIONA A TABELA AO FILE.
+			// ADICIONA A VERSï¿½O ï¿½ TABELA HASH DE VERSOES E ADICIONA A TABELA AO FILE.
 			versions.put(newChunk.getVersion(), newVersion);
 			newFile.setVersions(versions);
 			
-			// ADICIONA O NOVO FICHEIRO À NOSSA BIBLIOTECA.
+			// ADICIONA O NOVO FICHEIRO ï¿½ NOSSA BIBLIOTECA.
 			Peer.file_table.put(sha256_string, newFile);
 		}
 		else
@@ -64,12 +63,12 @@ public class PUTCHUNK extends Thread {
 				Version newVersion = new Version();
 				newVersion.setVersion(newChunk.getVersion());
 				
-				// CRIA UMA TABELA DE HASH, ADICIONA O CHUNK E COLOCA ESSA TABELA NA VERSÃO.
+				// CRIA UMA TABELA DE HASH, ADICIONA O CHUNK E COLOCA ESSA TABELA NA VERSï¿½O.
 				Hashtable<Long, Chunk> chunks = new Hashtable<Long, Chunk>();
 				chunks.put(newChunk.getChunkNumber(), newChunk);
 				newVersion.setChunks(chunks);
 				
-				// ADICIONA A VERSÃO À TABELA HASH DE VERSOES DO FILE.
+				// ADICIONA A VERSï¿½O ï¿½ TABELA HASH DE VERSOES DO FILE.
 				ficheiro.getVersions().put(newChunk.getVersion(), newVersion);
 			}
 			else
@@ -103,7 +102,7 @@ public class PUTCHUNK extends Thread {
 		
 		sendBuffer = "STORED " + newChunk.getVersion() + " " + newChunk.getFileID() + " " + newChunk.getChunkNumber() +'\r' + '\n';
 		
-		responsePacket = new DatagramPacket(sendBuffer.getBytes(),sendBuffer.getBytes().length,ipSender,portSender);
+		responsePacket = new DatagramPacket(sendBuffer.getBytes(),sendBuffer.getBytes().length,Peer.MC_IP,Peer.MC_PORT);
 		
 		//DELAY DE UM NUMERO ALEATORIO DE 0 A 400 MS 
 		milisecond_wait = random.nextInt(401);
@@ -116,7 +115,7 @@ public class PUTCHUNK extends Thread {
 		}
 		
 		try {
-			Peer.socket.send(responsePacket);
+			Peer.MC_socket.send(responsePacket);
 			System.out.println("#SENT: "+sendBuffer);
 		} catch (IOException e) {
 			//e.printStackTrace();
@@ -124,5 +123,11 @@ public class PUTCHUNK extends Thread {
 		}
 		
 		
+	}
+	public Chunk getNewChunk() {
+		return newChunk;
+	}
+	public void setNewChunk(Chunk newChunk) {
+		this.newChunk = newChunk;
 	}
 }

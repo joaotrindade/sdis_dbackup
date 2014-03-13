@@ -3,8 +3,12 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.MulticastSocket;
+import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.Hashtable;
 
 import API.DELETE;
@@ -16,84 +20,122 @@ public class Peer {
 	
 	// VARIAVEIS GLOBAIS
 	public static ArrayList<Chunk> database = new ArrayList<Chunk>();
-	public static DatagramSocket socket = null;
+	public static ArrayList<String> interfaces_ips = new ArrayList<String>();
+	public static MulticastSocket MC_socket = null, MDB_socket = null, MDR_socket = null;
 	public static Hashtable<String,FileBackup> file_table= new Hashtable<String,FileBackup>(); 
-	
+	public static InetAddress MC_IP, MDB_IP, MDR_IP;
+	public static int MC_PORT, MDB_PORT, MDR_PORT;
 	public static void main(String[] args) {
 		
+
 		// VARIAVEIS CORRESPONDENTES AO ARMAZENAMENTO
 		String receivedString = null;
 		String operation = null;
 		byte[] buffer = new byte[64001];
 		
-		// VARIAVEIS CORRESPONDENTES À CONEXÃO
+		// VARIAVEIS CORRESPONDENTES ï¿½ CONEXï¿½O
 		DatagramPacket receivingPacket = null;
-		InetAddress ipSender = null;
-		int portSender;
+		//InetAddress ipSender = null;
+		//int portSender;
 		
 		// VARIAVEIS DA API
-		MulticastConnection MCAST = new MulticastConnection();
+		Client CLIENT = new Client();
 		PUTCHUNK PUTC = new PUTCHUNK();
 		GETCHUNK GETC = new GETCHUNK();
 		DELETE DELF = new DELETE();
 		
 		
-		// INICIAR CONEXÃO MULTICAST 
-		MCAST.start();
+		// OBTER ENDEREÃ‡OS INTERFACES
+		try {
+			getNetworkInterfacesAdresses();
+		} catch (SocketException e2) {
+			e2.printStackTrace();
+		}
+		
+		// INICIAR CONEXï¿½O MULTICAST 
+		CLIENT.start();
+	
+	
+	
+			//ESTRUTURA ARG MC_IP MC_PORT MDB_IP MDB_PORT MDR_IP MDR PORT
+		try {
+			MC_IP = InetAddress.getByName(args[0]);
+			MC_PORT = Integer.valueOf(args[1]);
+			 
+			MDB_IP = InetAddress.getByName(args[2]);
+			MDB_PORT = Integer.valueOf(args[3]);
+			
+			MDR_IP = InetAddress.getByName(args[4]);
+			MDR_PORT = Integer.valueOf(args[5]);
+			
+		} catch (UnknownHostException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+
 		
 		System.out.println("### DISTRIBUTED BACKUP SERVICE ###");
 		
 		try {
-			socket = new DatagramSocket(36319);
+			
+			MC_socket = new MulticastSocket(MC_PORT);
+			MC_socket.joinGroup(MC_IP);
+			MDB_socket = new MulticastSocket(MDB_PORT);
+			MDB_socket.joinGroup(MDB_IP);
+			MDR_socket = new MulticastSocket(MDR_PORT);
+			MDR_socket.joinGroup(MDR_IP);
+			
 			
 			while(true)
 			{
-					receivingPacket = new DatagramPacket(buffer, buffer.length);
+				receivingPacket = new DatagramPacket(buffer, buffer.length);
 					
 				try {
-						socket.receive(receivingPacket);
+						MC_socket.receive(receivingPacket);
 						
-						receivedString = new String(receivingPacket.getData(),0,receivingPacket.getLength());
-						System.out.println("\n"+"#REQUEST: "+ receivedString);
-						
-						Chunk newChunk = new Chunk();
-						operation = parseRequest(receivedString,newChunk);
-						
-						if(operation.equalsIgnoreCase("PUTCHUNK"))
+						if(!interfaces_ips.contains(receivingPacket.getAddress().getHostAddress()))
 						{
-							ipSender = receivingPacket.getAddress();
-							portSender = receivingPacket.getPort();
+							receivedString = new String(receivingPacket.getData(),0,receivingPacket.getLength());
+							System.out.println("\n"+"#REQUEST: "+ receivedString);
 							
-							PUTC.run(newChunk,ipSender,portSender);
-						}
-						else if(operation.equalsIgnoreCase("GETCHUNK"))
-						{
-							ipSender = receivingPacket.getAddress();
-							portSender = receivingPacket.getPort();
+							Chunk newChunk = new Chunk();
+							operation = parseRequest(receivedString,newChunk);
 							
-							GETC.run(newChunk,ipSender,portSender);
+							if(operation.equalsIgnoreCase("PUTCHUNK"))
+							{	
+								PUTC.setNewChunk(newChunk);
+								PUTC.start();
+							}
+							else if(operation.equalsIgnoreCase("GETCHUNK"))
+							{
+								//ipSender = receivingPacket.getAddress();
+								//portSender = receivingPacket.getPort();
+								GETC.setNewChunk(newChunk);
+								GETC.start();
+							}
+							else if(operation.equalsIgnoreCase("DELETE"))
+							{
+								DELF.setNewChunk(newChunk);
+								DELF.start();
+							}
+							
+							
+							operation = null;
+							newChunk = null;
 						}
-						else if(operation.equalsIgnoreCase("DELETE"))
-						{
-							DELF.run(newChunk);
-						}
-						
-						
-						operation = null;
-						newChunk = null;
 						
 						
 
 				} catch (IOException e) {
 					//e.printStackTrace();
-					socket.close();
+					MC_socket.close();
 					System.out.println("#ERROR: Receiving Packet From Socket");
 					
 				}
 				
 			}
 			
-		} catch (SocketException e) {
+		} catch (IOException e) {
 			//e.printStackTrace();
 			System.out.println("#ERROR: Creating Socket");
 		}
@@ -137,6 +179,20 @@ public class Peer {
 		}
 				
 		return operation;
+	}
+	
+	private static void getNetworkInterfacesAdresses() throws SocketException{
+		Enumeration<NetworkInterface> e=NetworkInterface.getNetworkInterfaces();
+	    while(e.hasMoreElements())
+	    {
+	        NetworkInterface n=(NetworkInterface) e.nextElement();
+	        Enumeration<InetAddress> ee = n.getInetAddresses();
+	        while(ee.hasMoreElements())
+	        {
+	            InetAddress i= (InetAddress) ee.nextElement();
+	            interfaces_ips.add(i.getHostAddress());
+	        }
+	    }
 	}
 
 }

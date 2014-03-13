@@ -6,16 +6,16 @@ import Main_System.Chunk;
 import Main_System.Peer;
 
 public class DELETE extends Thread{
-	
-	public void run(Chunk newChunk){
+	private Chunk newChunk = null;
+	public void run(){
 		String sha256_string = null;
 		
 		//DELETE <FileId> <CRLF>
 		System.out.println("\n"+"#DELETE#######################");
-		System.out.println("##CHUNK_FILEID: " + newChunk.getFileID());
+		System.out.println("##CHUNK_FILEID: " + getNewChunk().getFileID());
 		System.out.println("##############################");
 		
-		sha256_string = newChunk.getFileID();
+		sha256_string = getNewChunk().getFileID();
 		try {
 			sha256_string = SHA256.hash256(sha256_string);
 		} catch (NoSuchAlgorithmException e1) {
@@ -27,6 +27,12 @@ public class DELETE extends Thread{
 		{
 			Peer.file_table.remove(sha256_string);
 		}
+	}
+	public Chunk getNewChunk() {
+		return newChunk;
+	}
+	public void setNewChunk(Chunk newChunk) {
+		this.newChunk = newChunk;
 	}
 
 }

@@ -12,11 +12,11 @@ public class MulticastConnection extends Thread {
 		MulticastSocket mcast_socket = null;
 		int mcast_port = 6790;
 		InetAddress ip_address = null;
-		String sendText = new String("multicast: 239.255.254.253 11118: 127.0.0.1 36319");
+		String sendText = new String("multicast: potatoes 11118: 192.168.32.194 36319");
 		
 		
 		try {
-				ip_address = InetAddress.getByName("239.255.254.253");
+				ip_address = InetAddress.getByName("239.255.254.252");
 				
 				mcast_socket = new MulticastSocket(mcast_port);
 				mcast_socket.setTimeToLive(1);
